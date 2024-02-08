@@ -125,6 +125,15 @@ def build_event_frame(now, event):
     minutes_to_end = event['detail']['minutesToEnd']
     hours_to_end = event['detail']['hoursToEnd']
 
+    color = "#ff78e9"
+    fiveMinuteWarning = event['detail']['fiveMinuteWarning']
+    oneMinuteWarning = event['detail']['oneMinuteWarning']
+    if fiveMinuteWarning:
+        color = "#ff5000"
+    if oneMinuteWarning:
+        color = "#9000ff"
+
+
     if minutes_to_start >= 1:
         tagline = ("in %d" % minutes_to_start, "min")
     elif hours_to_end >= 99:
