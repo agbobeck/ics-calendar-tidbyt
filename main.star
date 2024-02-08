@@ -29,24 +29,28 @@ def main(config):
     if(event == None):
         fail("Failed to fetch ICS file")
 
-    print(event)
-    print(event["eventStart"])
 
     if not event:
         # no events in the calendar
         return build_calendar_frame(now)
-
-    if event['eventStart'] < (now + time.parse_duration("30m")):
-        # event starts soon or is currently happening
-        return build_event_frame(now, event)
-    elif event['eventStart'].day() == now.day():
-        # event is later today
+    if event['detail']['thirtyMinuteWarning']:
         return build_calendar_frame(now, event)
+    elif event['detail']['tenMinuteWarning']:
+        return build_event_frame(now, event)
+    elif event['detail']['fiveMinuteWarning']:
+        return build_event_frame(now, event)
+    elif event['detail']['oneMinuteWarning']:
+        return build_event_frame(now, event)
+    elif event['detail']['inProgress']:
+        return build_event_frame(now, event)
+    elif event['detail']['isToday']:
+        return build_calendar_frame(now)
     else:
         return build_calendar_frame(now)
 
 def build_calendar_frame(now, event = None):
     month = now.format("Jan")
+    print(now.day())
 
     # top half displays the calendar icon and date
     top = [
@@ -54,7 +58,7 @@ def build_calendar_frame(now, event = None):
             cross_align = "center",
             expanded = True,
             children = [
-                render.PNG(CALENDAR_ICON),
+                render.Image(src = CALENDAR_ICON, width = 9, height = 11),
                 render.Box(width = 2, height = 1),
                 render.Text(
                     month.upper(),
@@ -83,7 +87,7 @@ def build_calendar_frame(now, event = None):
                 ),
             ),
             render.Text(
-                event['eventStart'].format("at 3:04 PM"),
+                event['start'].format("at 3:04 PM"),
                 color = "#fff500",
             ),
         ]
@@ -115,9 +119,9 @@ def build_calendar_frame(now, event = None):
     )
 
 def build_event_frame(now, event):
-    minutes_to_start = (event['eventStart'] - now).minutes()
-    minutes_to_end = (event['eventEnd'] - now).minutes()
-    hours_to_end = (event['eventEnd'] - now).hours()
+    minutes_to_start = event['detail']['minutesToStart']
+    minutes_to_end = event['detail']['minutesToEnd']
+    hours_to_end = event['detail']['hoursToEnd']
 
     if minutes_to_start >= 1:
         tagline = ("in %d" % minutes_to_start, "min")
@@ -139,7 +143,7 @@ def build_event_frame(now, event):
                 expanded = True,
                 children = [
                     render.WrappedText(
-                        event['eventName'].upper(),
+                        event['name'].upper(),
                         height = 17,
                     ),
                     render.Box(
