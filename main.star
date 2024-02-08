@@ -12,7 +12,7 @@ def main(config):
     if(ics_url == None):
         fail("ICS_URL not set in config")
 
-    usersTz = config.str("TZ", "America/New_York")
+    usersTz = config.str("TZ", "America/Chicago")
     if(usersTz == None):
         fail("TZ not set in config")
 
@@ -32,25 +32,27 @@ def main(config):
 
     if not event:
         # no events in the calendar
-        return build_calendar_frame(now)
+        return build_calendar_frame(now, usersTz)
     if event['detail']['thirtyMinuteWarning']:
-        return build_calendar_frame(now, event)
+        return build_calendar_frame(now, usersTz, event)
     elif event['detail']['tenMinuteWarning']:
-        return build_event_frame(now, event)
+        return build_event_frame(now, usersTz, event)
     elif event['detail']['fiveMinuteWarning']:
-        return build_event_frame(now, event)
+        return build_event_frame(now, usersTz, event)
     elif event['detail']['oneMinuteWarning']:
-        return build_event_frame(now, event)
+        return build_event_frame(now, usersTz, event)
     elif event['detail']['inProgress']:
-        return build_event_frame(now, event)
+        return build_event_frame(now, usersTz, event)
     elif event['detail']['isToday']:
-        return build_calendar_frame(now)
+        return build_calendar_frame(now, usersTz)
     else:
-        return build_calendar_frame(now)
+        return build_calendar_frame(now, usersTz)
 
-def build_calendar_frame(now, event = None):
+def build_calendar_frame(now, usersTz, event = None):
     month = now.format("Jan")
-    print(now.day())
+    day = now.format("Monday")
+    eventStart = time.from_timestamp(int(event['start'])).in_location(usersTz)
+
 
     # top half displays the calendar icon and date
     top = [
@@ -67,7 +69,7 @@ def build_calendar_frame(now, event = None):
                 ),
                 render.Box(width = 1, height = 1),
                 render.Text(
-                    str(now.day()),
+                    str(now.day),
                     color = "#ff83f3",
                     offset = -1,
                 ),
@@ -87,7 +89,7 @@ def build_calendar_frame(now, event = None):
                 ),
             ),
             render.Text(
-                event['start'].format("at 3:04 PM"),
+                eventStart.format("at 3:04 PM"),
                 color = "#fff500",
             ),
         ]
