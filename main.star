@@ -100,7 +100,7 @@ def build_calendar_frame(now, usersTz, event = None):
                 main_align = "end",
                 children = [
                     render.WrappedText(
-                        "NO MORE MEETINGS :)",
+                        "NO MORE MEETINGS ☺️",
                         color = "#fff500",
                         height = 16,
                     ),
@@ -120,9 +120,9 @@ def build_calendar_frame(now, usersTz, event = None):
         ),
     )
 
-def build_event_frame(now, event):
-    minutes_to_start = event['detail']['minutesToStart']
-    minutes_to_end = event['detail']['minutesToEnd']
+def build_event_frame(now, usersTz, event):
+    minutes_to_start = event['detail']['minutesUntilStart']
+    minutes_to_end = event['detail']['minutesUntilEnd']
     hours_to_end = event['detail']['hoursToEnd']
 
     color = "#ff78e9"
@@ -139,9 +139,9 @@ def build_event_frame(now, event):
     elif hours_to_end >= 99:
         tagline = ("", "now")
     elif minutes_to_end >= 99:
-        tagline = ("ends in %d" % hours_to_end, "h")
+        tagline = ("Ends in %d" % hours_to_end, "h")
     elif minutes_to_end > 1:
-        tagline = ("ends in %d" % minutes_to_end, "min")
+        tagline = ("Ends in %d" % minutes_to_end, "min")
     else:
         tagline = ("", "almost done")
 
@@ -158,7 +158,7 @@ def build_event_frame(now, event):
                         height = 17,
                     ),
                     render.Box(
-                        color = "#ff78e9",
+                        color = color,
                         height = 1,
                     ),
                     render.Box(height = 3),
