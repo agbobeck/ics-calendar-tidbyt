@@ -5,12 +5,14 @@ load("schema.star", "schema")
 load("encoding/base64.star", "base64")
 load("encoding/json.star", "json")
 
-FRAME_DELAY = 500
-LAMBDA_URL = "https://xmd10xd284.execute-api.us-east-1.amazonaws.com/ics-next-event"
-CALENDAR_ICON = base64.decode("iVBORw0KGgoAAAANSUhEUgAAAAkAAAALCAYAAACtWacbAAAAAXNSR0IArs4c6QAAAE9JREFUKFNjZGBgYJgzZ87/lJQURlw0I0xRYEMHw/qGCgZ0GqSZ8a2Myv8aX1eGls27GXDRYEUg0/ABxv///xOn6OjRowzW1tYMuOghaxIAD/ltSOskB+YAAAAASUVORK5CYII=")
-DEFAULT_ICS_URL = "https://www.phpclasses.org/browse/download/1/file/63438/name/example.ics"
-DEFAULT_TIMEZONE = "America/Chicago"
+
 def main(config):
+    location = config.str(P_LOCATION)
+    location = json.decode(location) if location else {}
+    timezone = location.get(
+        "timezone",
+        config.get("$tz", DEFAULT_TIMEZONE),
+    )
     ics_url = config.str("ics_url", DEFAULT_ICS_URL)
     if(ics_url == None):
         fail("ICS_URL not set in config")
@@ -49,9 +51,6 @@ def main(config):
 def build_calendar_frame(now, usersTz, event = None):
     month = now.format("Jan")
     day = now.format("Monday")
-    eventStart = None
-    if event:
-        eventStart = time.parse(event['start']).in_location(usersTz)
 
 
     # top half displays the calendar icon and date
@@ -81,7 +80,17 @@ def build_calendar_frame(now, usersTz, event = None):
     # bottom half displays the upcoming event, if there is one.
     # otherwise it just shows the time.
     if event:
-        bottom = [
+        eventStart = time.from_timestamp(int(event['start'])).in_location(usersTz)
+        color = "#ff78e9"
+        fiveMinuteWarning = event['detail']['fiveMinuteWarning'] or False
+        oneMinuteWarning = event['detail']['oneMinuteWarning'] or False
+        if fiveMinuteWarning:
+            color = "#ff5000"
+        if oneMinuteWarning:
+            color = "#9000ff"
+
+
+        baseChildren = [
             render.Marquee(
                 width = 64,
                 child = render.Text(
@@ -90,9 +99,34 @@ def build_calendar_frame(now, usersTz, event = None):
             ),
             render.Text(
                 eventStart.format("at 3:04 PM"),
-                color = "#fff500",
+                color = color,
             ),
+
         ]
+
+        if  event['detail']['minutesUntilStart'] <= 5:
+            baseChildren.pop()
+            baseChildren.append(
+                render.Text(
+                    "in %d min" % event['detail']['minutesUntilStart'],
+                    color = color,
+                )
+            )
+
+            baseChildren = [
+                render.Column(
+                    expanded = True,
+                    children = [
+                        render.Animation(
+                        baseChildren
+                        )
+                    ]
+                )
+            ]
+
+
+
+        bottom = baseChildren
     else:
         bottom = [
             render.Column(
@@ -125,15 +159,6 @@ def build_event_frame(now, usersTz, event):
     minutes_to_end = event['detail']['minutesUntilEnd']
     hours_to_end = event['detail']['hoursToEnd']
 
-    color = "#ff78e9"
-    fiveMinuteWarning = event['detail']['fiveMinuteWarning']
-    oneMinuteWarning = event['detail']['oneMinuteWarning']
-    if fiveMinuteWarning:
-        color = "#ff5000"
-    if oneMinuteWarning:
-        color = "#9000ff"
-
-
     if minutes_to_start >= 1:
         tagline = ("in %d" % minutes_to_start, "min")
     elif hours_to_end >= 99:
@@ -146,38 +171,31 @@ def build_event_frame(now, usersTz, event):
         tagline = ("", "almost done")
 
     baseChildren = [
-                  render.WrappedText(
-                        event['name'].upper(),
-                        height = 17,
-                    ),
-                    render.Box(
-                        color = color,
-                        height = 1,
-                    ),
-                    render.Box(height = 3),
-                    render.Row(
-                        main_align = "end",
-                        expanded = True,
-                        children = [
-                            render.Text(
-                                tagline[0],
-                                color = "#fff500",
-                            ),
-                            render.Box(height = 1, width = 1),
-                            render.Text(
-                                tagline[1],
-                                color = "#fff500",
-                            ),
-                        ],
-                    ),
+        render.WrappedText(
+            event['name'].upper(),
+            height = 17,
+        ),
+        render.Box(
+            color = "#ff78e9",
+            height = 1,
+        ),
+        render.Box(height = 3),
+        render.Row(
+            main_align = "end",
+            expanded = True,
+            children = [
+                render.Text(
+                    tagline[0],
+                    color = "#fff500",
+                ),
+                render.Box(height = 1, width = 1),
+                render.Text(
+                    tagline[1],
+                    color = "#fff500",
+                ),
+            ],
+        ),
     ]
-    if fiveMinuteWarning or oneMinuteWarning:
-        baseChildren = [
-            render.Animation(
-                children = baseChildren
-            )
-        ]
-
     return render.Root(
         child = render.Box(
             padding = 2,
@@ -195,6 +213,12 @@ def get_schema():
     return schema.Schema(
             version = "1",
             fields = [
+                     schema.Location(
+                id = P_LOCATION,
+                name = "Location",
+                desc = "Location for the display of date and time.",
+                icon = "locationDot",
+            ),
                 schema.Text(
                     id = "ics_url",
                     name = "iCalendar URL",
@@ -202,12 +226,14 @@ def get_schema():
                     icon = "calendar",
                     default = DEFAULT_ICS_URL,
                 ),
-                schema.Text(
-                    id = "tz",
-                    name = "Default Timezone",
-                    desc = "e.g. America/Chicago",
-                    icon = "clock",
-                    default = DEFAULT_TIMEZONE,
-                ),
             ],
         )
+
+
+P_LOCATION = "location"
+DEFAULT_TIMEZONE = "America/New_York"
+FRAME_DELAY = 500
+LAMBDA_URL = "https://xmd10xd284.execute-api.us-east-1.amazonaws.com/ics-next-event"
+CALENDAR_ICON = base64.decode("iVBORw0KGgoAAAANSUhEUgAAAAkAAAALCAYAAACtWacbAAAAAXNSR0IArs4c6QAAAE9JREFUKFNjZGBgYJgzZ87/lJQURlw0I0xRYEMHw/qGCgZ0GqSZ8a2Myv8aX1eGls27GXDRYEUg0/ABxv///xOn6OjRowzW1tYMuOghaxIAD/ltSOskB+YAAAAASUVORK5CYII=")
+# DEFAULT_ICS_URL = "https://www.phpclasses.org/browse/download/1/file/63438/name/example.ics"
+DEFAULT_ICS_URL = "https://outlook.office365.com/owa/calendar/0b5c32636665474191e0fdf787e3bf1e@ocvibe.com/ee48be8cb2124c6b88715a2503881e7f10382479269454683591/calendar.ics"
