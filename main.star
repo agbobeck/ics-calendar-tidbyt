@@ -145,15 +145,8 @@ def build_event_frame(now, usersTz, event):
     else:
         tagline = ("", "almost done")
 
-    return render.Root(
-        child = render.Box(
-            padding = 2,
-            child = render.Column(
-                main_align = "start",
-                cross_align = "start",
-                expanded = True,
-                children = [
-                    render.WrappedText(
+    baseChildren = [
+                  render.WrappedText(
                         event['name'].upper(),
                         height = 17,
                     ),
@@ -177,7 +170,22 @@ def build_event_frame(now, usersTz, event):
                             ),
                         ],
                     ),
-                ],
+    ]
+    if fiveMinuteWarning or oneMinuteWarning:
+        baseChildren = [
+            render.Animation(
+                children = baseChildren
+            )
+        ]
+
+    return render.Root(
+        child = render.Box(
+            padding = 2,
+            child = render.Column(
+                main_align = "start",
+                cross_align = "start",
+                expanded = True,
+                children = baseChildren
             ),
         ),
     )
