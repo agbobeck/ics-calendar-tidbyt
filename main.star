@@ -1,18 +1,21 @@
 load("render.star", "render")
 load("http.star", "http")
 load("time.star", "time")
+load("schema.star", "schema")
 load("encoding/base64.star", "base64")
 load("encoding/json.star", "json")
 
 FRAME_DELAY = 500
 LAMBDA_URL = "https://xmd10xd284.execute-api.us-east-1.amazonaws.com/ics-next-event"
 CALENDAR_ICON = base64.decode("iVBORw0KGgoAAAANSUhEUgAAAAkAAAALCAYAAACtWacbAAAAAXNSR0IArs4c6QAAAE9JREFUKFNjZGBgYJgzZ87/lJQURlw0I0xRYEMHw/qGCgZ0GqSZ8a2Myv8aX1eGls27GXDRYEUg0/ABxv///xOn6OjRowzW1tYMuOghaxIAD/ltSOskB+YAAAAASUVORK5CYII=")
+DEFAULT_ICS_URL = "https://www.phpclasses.org/browse/download/1/file/63438/name/example.ics"
+DEFAULT_TIMEZONE = "America/Chicago"
 def main(config):
-    ics_url = config.str("ICS_URL", "https://outlook.office365.com/owa/calendar/0b5c32636665474191e0fdf787e3bf1e@ocvibe.com/ee48be8cb2124c6b88715a2503881e7f10382479269454683591/calendar.ics")
+    ics_url = config.str("ics_url", DEFAULT_ICS_URL)
     if(ics_url == None):
         fail("ICS_URL not set in config")
 
-    usersTz = config.str("TZ", "America/Chicago")
+    usersTz = config.str("tz", "America/Chicago")
     if(usersTz == None):
         fail("TZ not set in config")
 
@@ -25,11 +28,6 @@ def main(config):
         fail("Failed to fetch ICS file")
 
     event = ics.json()["data"]
-
-    if(event == None):
-        fail("Failed to fetch ICS file")
-
-
     if not event:
         # no events in the calendar
         return build_calendar_frame(now, usersTz)
@@ -51,7 +49,9 @@ def main(config):
 def build_calendar_frame(now, usersTz, event = None):
     month = now.format("Jan")
     day = now.format("Monday")
-    eventStart = time.from_timestamp(int(event['start'])).in_location(usersTz)
+    eventStart = None
+    if event:
+        eventStart = time.parse(event['start']).in_location(usersTz)
 
 
     # top half displays the calendar icon and date
@@ -100,7 +100,7 @@ def build_calendar_frame(now, usersTz, event = None):
                 main_align = "end",
                 children = [
                     render.WrappedText(
-                        "NO MORE MEETINGS ☺️",
+                        "NO MORE MEETINGS :-)",
                         color = "#fff500",
                         height = 16,
                     ),
@@ -181,3 +181,25 @@ def build_event_frame(now, usersTz, event):
             ),
         ),
     )
+
+
+def get_schema():
+    return schema.Schema(
+            version = "1",
+            fields = [
+                schema.Text(
+                    id = "ics_url",
+                    name = "iCalendar URL",
+                    desc = "The URL of the iCalendar file",
+                    icon = "calendar",
+                    default = DEFAULT_ICS_URL,
+                ),
+                schema.Text(
+                    id = "tz",
+                    name = "Default Timezone",
+                    desc = "e.g. America/Chicago",
+                    icon = "clock",
+                    default = DEFAULT_TIMEZONE,
+                ),
+            ],
+        )
